@@ -834,16 +834,16 @@ function _create_app(package_dir::String,
                                               julia_init_c_file=julia_init_c_file)
         end
 
+        if Sys.isapple()
+            cmd = `install_name_tool -id @rpath/$sysimg_file $sysimg_file`
+            @debug "running $cmd"
+            run(cmd)
+        end
+
         if !library_only
             c_driver_program = abspath(c_driver_program)
             create_executable_from_sysimg(; sysimage_path=sysimg_file, executable_path=name,
                                          c_driver_program_path=c_driver_program)
-
-            if Sys.isapple()
-                cmd = `install_name_tool -change $sysimg_file @rpath/$sysimg_file $name`
-                @debug "running $cmd"
-                run(cmd)
-            end
         end
     end
     return
