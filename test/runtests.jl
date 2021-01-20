@@ -85,6 +85,28 @@ end
             @test occursin("HelloWorld artifact at $(realpath(app_compiled_dir))", app_output)
         end
     end
+
+    if !is_slow_ci
+        # Test library creation
+        lib_source_dir = joinpath(@__DIR__, "..", "examples/MyLib")
+        lib_target_dir = joinpath(tmp, "MyLibCompiled")
+
+        incremental = true
+        filter = true
+        lib_name = "libinc"
+
+        tmp_lib_src_dir = joinpath(tmp, "MyLib")
+        cp(lib_source_dir, tmp_lib_src_dir)
+        create_library(tmp_lib_src_dir, lib_target_dir; incremental=incremental, force=true, filter_stdlibs=filter,
+                    precompile_execution_file=joinpath(lib_source_dir, "build", "generate_precompile.jl"), 
+                    precompile_statements_file=joinpath(lib_source_dir, "build", "additional_precompile.jl"),
+                    lib_name=lib_name)
+        rm(tmp_lib_src_dir; recursive=true)
+        
+    end
+
+
+
     # Test creating an empty sysimage
     if !is_slow_ci
         tmp = mktempdir()
