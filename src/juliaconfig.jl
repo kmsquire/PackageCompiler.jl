@@ -24,11 +24,7 @@ end
 julia_includedir() = abspath(Sys.BINDIR, Base.INCLUDEDIR, "julia")
 
 function ldflags()
-    fl = if VERSION >= v"1.6.0-DEV.1673"
-        "-L$(shell_escape(julia_libdir())) -L$(shell_escape(julia_private_libdir()))"
-    else
-        "-L$(shell_escape(julia_libdir()))"
-    end
+    fl = "-L$(shell_escape(julia_libdir()))"
     if Sys.iswindows()
         fl = fl * " -Wl,--stack,8388608"
         fl = fl * " -Wl,--export-all-symbols"
@@ -40,25 +36,17 @@ end
 
 # TODO
 function ldlibs(relative_path=nothing)
-    libnames = if VERSION >= v"1.6.0-DEV.1673"
-        if ccall(:jl_is_debugbuild, Cint, ()) != 0
-            "-ljulia-debug -ljulia-debug-internal"
-        else
-            "-ljulia -ljulia-internal"
-        end
+    libname = if ccall(:jl_is_debugbuild, Cint, ()) != 0
+        "-ljulia-debug"
     else
-        if ccall(:jl_is_debugbuild, Cint, ()) != 0
-            "-ljulia-debug"
-        else
-            "-ljulia"
-        end
+        "-ljulia"
     end
     if Sys.islinux()
-        return "-Wl,-rpath-link,$(shell_escape(julia_libdir())) -Wl,-rpath-link,$(shell_escape(julia_private_libdir())) $libnames"
+        return "-Wl,-rpath-link,$(shell_escape(julia_libdir())) $libname"
     elseif Sys.iswindows()
-        return "$libnames -lopenlibm"
+        return "$libname -lopenlibm"
     else
-        return "$libnames"
+        return "$libname"
     end
 end
 
@@ -76,17 +64,9 @@ end
 function rpath()
     Sys.iswindows() && return ``
 
-    if VERSION >= v"1.6.0-DEV.1673"
-        if Sys.isapple()
-            `-Wl,-rpath,'@executable_path' -Wl,-rpath,'@executable_path/../lib' -Wl,-rpath,'@executable_path/../lib/julia'`
-        else
-            `-Wl,-rpath,\$ORIGIN:\$ORIGIN/../lib:\$ORIGIN/../lib/julia`
-        end
+    if Sys.isapple()
+        `-Wl,-rpath,'@executable_path' -Wl,-rpath,'@executable_path/../lib'`
     else
-        if Sys.isapple()
-            `-Wl,-rpath,'@executable_path' -Wl,-rpath,'@executable_path/../lib'`
-        else
-            `-Wl,-rpath,\$ORIGIN:\$ORIGIN/../lib`
-        end
+        `-Wl,-rpath,\$ORIGIN:\$ORIGIN/../lib`
     end
 end

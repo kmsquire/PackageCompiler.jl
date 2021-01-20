@@ -496,22 +496,7 @@ function create_sysimg_from_object_file(input_object::String, sysimage_path::Str
     extra = Sys.iswindows() ? `-Wl,--export-all-symbols` : Sys.isunix() ? `-fPIC` : ``
     compiler = get_compiler()
     m = something(march(), ``)
-    cmd = if VERSION >= v"1.6.0-DEV.1673"
-        private_libdir = if Base.DARWIN_FRAMEWORK # taken from Libdl tests
-            if ccall(:jl_is_debugbuild, Cint, ()) != 0
-                dirname(abspath(Libdl.dlpath(Base.DARWIN_FRAMEWORK_NAME * "_debug")))
-            else
-                joinpath(dirname(abspath(Libdl.dlpath(Base.DARWIN_FRAMEWORK_NAME))),"Frameworks")
-            end
-        elseif ccall(:jl_is_debugbuild, Cint, ()) != 0
-            dirname(abspath(Libdl.dlpath("libjulia-internal-debug")))
-        else
-            dirname(abspath(Libdl.dlpath("libjulia-internal")))
-        end
-        `$compiler $(bitflag()) $m -shared -L$(julia_libdir) -L$(private_libdir) -o $sysimage_path $o_file_flags -ljulia-internal -ljulia $(rpath()) $extra`
-    else
-        `$compiler $(bitflag()) $m -shared -L$(julia_libdir) -o $sysimage_path $o_file_flags -ljulia $(rpath()) $extra`
-    end
+    cmd = `$compiler $(bitflag()) $m -shared -L$(julia_libdir) -ljulia -o $sysimage_path $o_file_flags $(rpath()) $extra`
     @debug "running $cmd"
     run_with_env(cmd, compiler)
     return nothing
