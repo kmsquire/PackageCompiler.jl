@@ -842,7 +842,7 @@ function create_executable_from_sysimg(;sysimage_path::String,
     wrapper = c_driver_program_path
     compiler = get_compiler()
     m = something(march(), ``)
-    cmd = `$compiler -DJULIAC_PROGRAM_LIBNAME=$(repr(sysimage_path)) $(bitflag()) $m -o $(executable_path) $(wrapper) $(sysimage_path) -O2 $(rpath()) $flags`
+    cmd = `$compiler -DJULIAC_PROGRAM_LIBNAME=$(repr(sysimage_path)) $(bitflag()) $m $(wrapper) $(sysimage_path) -O2 $(rpath()) $flags -o $(executable_path)`
     @debug "running $cmd"
     run_with_env(cmd, compiler)
     return nothing
