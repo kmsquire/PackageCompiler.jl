@@ -145,12 +145,16 @@ function get_sysimg_file(name::String;
                      level::String="patch")
 
     dlext = Libdl.dlext
-    (!library_only || version === nothing || Sys.iswindows()) && return "$name.$dlext"
+    (!library_only || Sys.iswindows()) && return "$name.$dlext"
 
     # For libraries on Unix/Apple, make sure the name starts with "lib"
 
     if !startswith(name, "lib")
         name = "lib" * name
+    end
+
+    if version === nothing
+        return "$name.$dlext"
     end
 
     version = get_compat_version_str(version, level)
@@ -683,10 +687,10 @@ function audit_app(ctx::Pkg.Types.Context)
 end
 
 """
-    create_app(app_source::String, compiled_app::String; kwargs...)
+    create_app(package_dir::String, compiled_app::String; kwargs...)
 
-Compile an app with the source in `app_source` to the folder `compiled_app`.
-The folder `app_source` needs to contain a package where the package include a
+Compile an app with the source in `package_dir` to the folder `compiled_app`.
+The folder `package_dir` needs to contain a package where the package includes a
 function with the signature
 
 ```
@@ -751,7 +755,7 @@ end
     create_library(package_dir::String, dest_dir::String; kwargs...)
 
 Compile an library with the source in `package_dir` to the folder `dest_dir`.
-The folder `app_source` should to contain a package with C-callable functions,
+The folder `package_dir` should to contain a package with C-callable functions,
 e.g.
 
 ```
@@ -769,8 +773,8 @@ Base.@ccallable function julia_cg(fptr::Ptr{Cvoid}, cx::Ptr{Cdouble}, cb::Ptr{Cd
 end
 ```
 
-The library will be placed in the `lib` folder in `dest_dir`, and can be linked to
-and called into from C/C++ or other languages that can use C libraries.
+The library will be placed in the `lib` folder in `dest_dir` (or `bin` on Windows),
+and can be linked to and called into from C/C++ or other languages that can use C libraries.
 
 Note that any applications/programs linking to this library may need help finding
 it at run time.  Options include
@@ -840,7 +844,7 @@ function create_library(package_dir::String,
                         lib_name=nothing,
                         precompile_execution_file::Union{String, Vector{String}}=String[],
                         precompile_statements_file::Union{String, Vector{String}}=String[],
-                        incremental=true,
+                        incremental=false,
                         filter_stdlibs=false,
                         audit=true,
                         force=false,
