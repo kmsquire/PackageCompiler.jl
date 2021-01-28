@@ -1,93 +1,35 @@
-# [Apps](@id apps)
+# [Libraries](@id libraries)
 
-With an "app" we here mean a "bundle" of files where one of these files is an
-executable and where this bundle can be sent to another machine while still allowing
-the executable to run.
+Creating a library is similar to creating an app.  The main difference is the
+lack of a main function in the result--it's assumed that the library will be
+linked dynamically at runtime with a program written in C/C++ or another
+language.
 
-Use-cases for Julia-apps are for example when one wants to provide some kind of
-functionality where the fact that the code was written in Julia is just an
-implementation detail and where requiring the user to download and use Julia to
-run the code would be a distraction. There is also no need to provide the
-original Julia source code for apps since everything gets baked into the
-sysimage.
+Because most libraries distributed are already dynamically linked and loaded,
+on demand, to make things work, we distribute all of the libraries necessary to
+run Julia.  In the end, we end up with a directory of libraries (`lib`, or `bin`
+on Windows) and an `include` directory with C header files.
 
+Of course, we also want the library to be relocatable, and all of the caveats
+in the [App relocatability](@ref relocatability) section still apply.
 
-## Relocatability(@id relocatability)
+## Creating a library
 
-Since we want to send the app to other machines the app we create must be
-"relocatable".  With an app being relocatable we mean it does not rely on
-specifics of the machine where the app was created.  Relocatability is not an
-absolute measure, most apps assume some properties of the machine they will run
-on, like what operating system is installed and the presence of graphics
-drivers if one wants to show graphics. On the other hand, embedding things into
-the app that is most likely unique to the machine, such as absolute paths to
-libraries, means that the application almost surely will not run properly on
-another machine.
-
-For something to be relocatable, everything that it depends on must also be
-relocatable.  In the case of an app, the app itself and all the Julia packages
-it depends on must also relocatable. This is a bit of an issue because the
-Julia package ecosystem has rarely given much thought to relocatability
-since creating "apps" has not been common.
-
-The main problem with relocatability of Julia packages is that many packages
-are encoding fundamentally non-relocatable information *into the source code*.
-As an example, many packages tend to use a `build.jl` file (which runs when the
-package is first installed) that looks something like:
+As with apps, the source of a library is a package with a project and manifest file.
+The library is expected to provide C-callable functions for the functionality it
+is providing.  These functions should be defined using the `Base.@ccallable` macro:
 
 ```julia
-lib_path = find_library("libfoo")
-write("deps.jl", "const LIBFOO_PATH = $(repr(lib_path))")
-```
-
-The main package file then contains:
-
-```julia
-module Package
-
-if !isfile("../build/deps.jl")
-    error("run Pkg.build(\"Package\") to re-build Package")
-end
-include("../build/deps.jl")
-function __init__()
-    libfoo = Libdl.dlopen(LIBFOO_PATH)
-end
-
-...
-
-end # module
-```
-
-The absolute path to `lib_path` that `find_library` found is thus effectively
-included into the source code of the package. Arguably, the whole build system
-in Julia is inherently non-relocatable because it runs when the package is
-being installed which is a concept that does not make sense when distributing
-an app.
-
-Some packages do need to call into external libraries and use external binaries
-so the question then arises: "how are these packages supposed to do this in a
-relocatable way?"  The answer is to use the "artifact system" introduced in
-Julia 1.3, and described in the following [blog
-post](https://julialang.org/blog/2019/11/artifacts). The artifact system is a
-declarative way of downloading and using "external files" like binaries and
-libraries.  How this is used in practice is described later.
-
-
-## Creating an app
-
-The source of an app is a package with a project and manifest file.
-It should define a function with the signature
-
-```julia
-function julia_main()::Cint
-  # do something based on ARGS?
-  return 0 # if things finished successfully
+Base.@ccallable function increment(count::Cint)::Cint
+    count += 1
+    println("Incremented count: $count")
+    return count
 end
 ```
 
-which will be the entry point of the app (the function that runs when the
-executable in the app is run). A skeleton of an app to start working from can
-be found [here](https://github.com/JuliaLang/PackageCompiler.jl/tree/master/examples/MyApp).
+This function will be exported and made available to programs which link to the C
+library.  A skeleton of a library to start working from can be found 
+[here](https://github.com/JuliaLang/PackageCompiler.jl/tree/master/examples/MyLib).
 
 Regarding relocatability, PackageCompiler provides a function
 [`audit_app(app_dir::String)`](@ref) that tries to find common problems with
