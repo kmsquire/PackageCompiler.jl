@@ -508,6 +508,7 @@ function create_sysimage(packages::Union{Symbol, Vector{Symbol}}=Symbol[];
         end
     end
 
+    println("sysimage_path: $sysimage_path")
     o_init_file = julia_init_c_file === nothing ? nothing : compile_c_init_julia(julia_init_c_file, sysimage_path)
 
     # Create the sysimage
